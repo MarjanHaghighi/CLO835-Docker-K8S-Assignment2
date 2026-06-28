@@ -1,17 +1,72 @@
-# TODO: Build your image and push it to Docker Hub automatically on every merge to master.
-# Use the repository secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN — do NOT hard-code them.
-name: Build and Push to Docker Hub
+# ------------------------------------------------------------
+# GitHub Actions CI/CD Pipeline
+# Builds the Docker image and pushes it to Docker Hub.
+# Triggered when code is pushed or a Pull Request is created.
+# ------------------------------------------------------------
 
+name: Build and Push Docker Image
+
+# Run this workflow on pushes and Pull Requests to the main branch
 on:
   push:
-    branches: [ master ]
+    branches:
+      - main          # Build and push image
+  pull_request:
+    branches:
+      - main          # Build only (no push)
+
+# Global variables used throughout the workflow
+env:
+  IMAGE_NAME: clo835-assignment2     # Docker Hub repository name
+  VERSION: "0.2"                     # Application version
 
 jobs:
+
+  # Define the build job
   build-and-push:
+
+    # Use GitHub's Ubuntu virtual machine
     runs-on: ubuntu-latest
+
     steps:
-      # TODO: check out the code
-      # TODO: log in to Docker Hub
-      # TODO: build from your Dockerfile and push the image,
-      #       tagged with the app version (e.g. 0.2) AND the commit SHA
-      - run: echo "TODO: replace this with your build-and-push steps"
+
+      # --------------------------------------------------------
+      # Step 1 - Download the repository source code
+      # --------------------------------------------------------
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------------
+      # Step 2 - Authenticate with Docker Hub
+      # Uses GitHub Secrets to keep credentials secure.
+      # This step runs only when code is pushed.
+      # --------------------------------------------------------
+      - name: Login to Docker Hub
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # --------------------------------------------------------
+      # Step 3 - Build the Docker image
+      # Create two image tags:
+      #   1. Application version (0.2)
+      #   2. Git commit SHA for traceability
+      # --------------------------------------------------------
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            .
+
+      # --------------------------------------------------------
+      # Step 4 - Push both image tags to Docker Hub
+      # Runs only after a successful push to the main branch.
+      # --------------------------------------------------------
+      - name: Push Docker image
+        if: github.event_name == 'push'
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
