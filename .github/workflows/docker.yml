@@ -18,7 +18,7 @@ on:
 # Global variables used throughout the workflow
 env:
   IMAGE_NAME: clo835-assignment2     # Docker Hub repository name
-  VERSION: "0.2"                     # Application version
+  VERSION: "0.3"                     # Application version
 
 jobs:
 
